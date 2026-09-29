@@ -48,6 +48,16 @@ jobs:
       - name: Build
         run: pnpm --filter @alardus/novel build
 
+      - name: Verify release tag
+        if: github.event_name == 'push'
+        run: |
+          package_version="$(node -p "require('./packages/headless/package.json').version")"
+          expected_tag="novel-v${package_version}"
+          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
+            echo "Expected tag ${expected_tag}, got ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
       - name: Publish
         run: pnpm --filter @alardus/novel publish --no-git-checks
         env:

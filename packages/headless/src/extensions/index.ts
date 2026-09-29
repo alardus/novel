@@ -1,5 +1,5 @@
 import { InputRule } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Fragment as ProseMirrorFragment, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Color } from "@tiptap/extension-color";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
@@ -27,7 +27,7 @@ declare module "@tiptap/core" {
   interface Storage {
     markdown: MarkdownStorage & {
       serializer: {
-        serialize(node: ProseMirrorNode): string;
+        serialize(node: ProseMirrorNode | ProseMirrorFragment): string;
       };
     };
   }
@@ -73,6 +73,8 @@ const Horizontal = HorizontalRule.extend({
 
 export * from "./ai-highlight";
 export * from "./slash-command";
+export type { MathematicsOptions } from "./mathematics";
+export type { TwitterOptions } from "./twitter";
 export {
   CodeBlockLowlight,
   Horizontal as HorizontalRule,

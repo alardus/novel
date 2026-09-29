@@ -7,7 +7,9 @@ import type { ReactNode } from "react";
 type BubbleMenuPlacement = NonNullable<BubbleMenuProps["options"]>["placement"];
 
 interface LegacyTippyOptions {
+  /** @deprecated Tiptap 3 Floating UI has no animation-duration equivalent. */
   readonly duration?: number | [number, number];
+  readonly onHidden?: () => void;
   readonly placement?: BubbleMenuPlacement;
 }
 
@@ -39,6 +41,7 @@ export const EditorBubble = forwardRef<HTMLDivElement, EditorBubbleProps>(
       return {
         shouldShow,
         options: {
+          onHide: tippyOptions?.onHidden,
           placement: tippyOptions?.placement,
         },
         editor: currentEditor ?? undefined,
