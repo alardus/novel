@@ -1,6 +1,6 @@
 {
   "name": "@alardus/novel",
-  "version": "1.0.3-alardus.1",
+  "version": "1.0.3-alardus.2",
   "description": "Notion-style WYSIWYG editor with AI-powered autocompletions",
   "license": "Apache-2.0",
   "type": "module",

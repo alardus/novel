@@ -1,3 +1,9 @@
+## 1.0.3-alardus.2
+
+### Patch Changes
+
+- [#2](https://github.com/alardus/novel/pull/2) Use native Tiptap 3 mounting for slash commands and expose native Bubble Menu options while preserving legacy consumer props.
+
 # [0.2.0](https://github.com/steven-tey/novel/compare/v0.1.0...v0.2.0) (2025-01-17)
 
 ## 1.0.0
