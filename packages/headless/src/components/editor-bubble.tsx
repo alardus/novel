@@ -1,24 +1,24 @@
-import { BubbleMenu, isNodeSelection, useCurrentEditor } from "@tiptap/react";
-import type { BubbleMenuProps } from "@tiptap/react";
-import { forwardRef, useEffect, useMemo, useRef } from "react";
+import { isNodeSelection } from "@tiptap/core";
+import { useCurrentEditor } from "@tiptap/react";
+import { BubbleMenu, type BubbleMenuProps } from "@tiptap/react/menus";
+import { forwardRef, useMemo } from "react";
 import type { ReactNode } from "react";
-import type { Instance, Props } from "tippy.js";
 
-export interface EditorBubbleProps extends Omit<BubbleMenuProps, "editor"> {
+type BubbleMenuPlacement = NonNullable<BubbleMenuProps["options"]>["placement"];
+
+interface LegacyTippyOptions {
+  readonly duration?: number | [number, number];
+  readonly placement?: BubbleMenuPlacement;
+}
+
+export interface EditorBubbleProps extends Omit<BubbleMenuProps, "editor" | "options"> {
   readonly children: ReactNode;
+  readonly tippyOptions?: LegacyTippyOptions;
 }
 
 export const EditorBubble = forwardRef<HTMLDivElement, EditorBubbleProps>(
   ({ children, tippyOptions, ...rest }, ref) => {
     const { editor: currentEditor } = useCurrentEditor();
-    const instanceRef = useRef<Instance<Props> | null>(null);
-
-    useEffect(() => {
-      if (!instanceRef.current || !tippyOptions?.placement) return;
-
-      instanceRef.current.setProps({ placement: tippyOptions.placement });
-      instanceRef.current.popperInstance?.update();
-    }, [tippyOptions?.placement]);
 
     const bubbleMenuProps: Omit<BubbleMenuProps, "children"> = useMemo(() => {
       const shouldShow: BubbleMenuProps["shouldShow"] = ({ editor, state }) => {
@@ -38,19 +38,10 @@ export const EditorBubble = forwardRef<HTMLDivElement, EditorBubbleProps>(
 
       return {
         shouldShow,
-        tippyOptions: {
-          onCreate: (val) => {
-            instanceRef.current = val;
-
-            instanceRef.current.popper.firstChild?.addEventListener("blur", (event) => {
-              event.preventDefault();
-              event.stopImmediatePropagation();
-            });
-          },
-          moveTransition: "transform 0.15s ease-out",
-          ...tippyOptions,
+        options: {
+          placement: tippyOptions?.placement,
         },
-        editor: currentEditor,
+        editor: currentEditor ?? undefined,
         ...rest,
       };
     }, [rest, tippyOptions]);
