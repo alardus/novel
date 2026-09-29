@@ -10,6 +10,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
