@@ -1,11 +1,36 @@
 import { Extension } from "@tiptap/core";
 import type { Editor, Range } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
-import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
+import Suggestion, {
+  type SuggestionKeyDownProps,
+  type SuggestionOptions,
+  type SuggestionProps,
+} from "@tiptap/suggestion";
 import type { RefObject } from "react";
 import type { ReactNode } from "react";
-import tippy, { type GetReferenceClientRect, type Instance, type Props } from "tippy.js";
 import { EditorCommandOut } from "../components/editor-command";
+
+type SuggestionAllow = NonNullable<SuggestionOptions["allow"]>;
+
+interface CommandRenderer {
+  readonly element: HTMLElement;
+  readonly ref: { onKeyDown?: (props: SuggestionKeyDownProps) => boolean } | null;
+  destroy(): void;
+  updateProps(props: SuggestionProps): void;
+}
+
+type CommandRendererFactory = (props: SuggestionProps) => CommandRenderer;
+
+export const createSlashCommandAllow = (userAllow?: SuggestionAllow): SuggestionAllow => {
+  return (props) => {
+    const parent = props.state.doc.resolve(props.range.from).parent;
+    if (parent.type.name === "codeBlock") {
+      return false;
+    }
+
+    return userAllow?.(props) ?? true;
+  };
+};
 
 const Command = Extension.create({
   name: "slash-command",
@@ -20,70 +45,78 @@ const Command = Extension.create({
     };
   },
   addProseMirrorPlugins() {
+    const suggestion = this.options.suggestion as SuggestionOptions;
+
     return [
       Suggestion({
+        ...suggestion,
         editor: this.editor,
-        ...this.options.suggestion,
+        allow: createSlashCommandAllow(suggestion.allow),
       }),
     ];
   },
 });
 
-const renderItems = (elementRef?: RefObject<Element> | null) => {
-  let component: ReactRenderer | null = null;
-  let popup: Instance<Props>[] | null = null;
+export const createRenderItems = (
+  elementRef: RefObject<Element> | null | undefined,
+  createRenderer: CommandRendererFactory,
+) => {
+  let component: CommandRenderer | null = null;
+  let unmount: (() => void) | null = null;
+  let compatibilityContainerOwnsElement = false;
+  let cleanedUp = true;
 
   return {
-    onStart: (props: { editor: Editor; clientRect: DOMRect }) => {
-      component = new ReactRenderer(EditorCommandOut, {
-        props,
-        editor: props.editor,
-      });
+    onStart: (props: SuggestionProps) => {
+      component = createRenderer(props);
+      cleanedUp = false;
 
-      const { selection } = props.editor.state;
-
-      const parentNode = selection.$from.node(selection.$from.depth);
-      const blockType = parentNode.type.name;
-
-      if (blockType === "codeBlock") {
-        return false;
+      const container = elementRef?.current;
+      if (container) {
+        container.appendChild(component.element);
+        compatibilityContainerOwnsElement = true;
       }
 
-      // @ts-ignore
-      popup = tippy("body", {
-        getReferenceClientRect: props.clientRect,
-        appendTo: () => (elementRef ? elementRef.current : document.body),
-        content: component.element,
-        showOnCreate: true,
-        interactive: true,
-        trigger: "manual",
-        placement: "bottom-start",
-      });
+      unmount = props.mount(component.element);
     },
-    onUpdate: (props: { editor: Editor; clientRect: GetReferenceClientRect }) => {
+    onUpdate: (props: SuggestionProps) => {
       component?.updateProps(props);
-
-      popup?.[0]?.setProps({
-        getReferenceClientRect: props.clientRect,
-      });
     },
-
-    onKeyDown: (props: { event: KeyboardEvent }) => {
+    onKeyDown: (props: SuggestionKeyDownProps) => {
       if (props.event.key === "Escape") {
-        popup?.[0]?.hide();
-
         return true;
       }
 
-      // @ts-ignore
-      return component?.ref?.onKeyDown(props);
+      return component?.ref?.onKeyDown?.(props) ?? false;
     },
     onExit: () => {
-      popup?.[0]?.destroy();
+      if (cleanedUp) {
+        return;
+      }
+
+      cleanedUp = true;
+      unmount?.();
+      unmount = null;
+
+      if (compatibilityContainerOwnsElement) {
+        component?.element.remove();
+        compatibilityContainerOwnsElement = false;
+      }
+
       component?.destroy();
+      component = null;
     },
   };
 };
+
+const createReactRenderer: CommandRendererFactory = (props) =>
+  new ReactRenderer(EditorCommandOut, {
+    props,
+    editor: props.editor,
+  }) as CommandRenderer;
+
+const renderItems = (elementRef?: RefObject<Element> | null) =>
+  createRenderItems(elementRef, createReactRenderer);
 
 export interface SuggestionItem {
   title: string;
