@@ -13,13 +13,35 @@ interface LegacyTippyOptions {
   readonly placement?: BubbleMenuPlacement;
 }
 
-export interface EditorBubbleProps extends Omit<BubbleMenuProps, "editor" | "options"> {
+export const resolveBubbleMenuOptions = (
+  nativeOptions?: BubbleMenuProps["options"],
+  legacyOptions?: LegacyTippyOptions,
+): BubbleMenuProps["options"] => {
+  if (!legacyOptions) {
+    return nativeOptions;
+  }
+
+  const mappedLegacyOptions: BubbleMenuProps["options"] = {};
+  if (legacyOptions.onHidden) {
+    mappedLegacyOptions.onHide = legacyOptions.onHidden;
+  }
+  if (legacyOptions.placement) {
+    mappedLegacyOptions.placement = legacyOptions.placement;
+  }
+
+  return {
+    ...mappedLegacyOptions,
+    ...nativeOptions,
+  };
+};
+
+export interface EditorBubbleProps extends Omit<BubbleMenuProps, "editor"> {
   readonly children: ReactNode;
   readonly tippyOptions?: LegacyTippyOptions;
 }
 
 export const EditorBubble = forwardRef<HTMLDivElement, EditorBubbleProps>(
-  ({ children, tippyOptions, ...rest }, ref) => {
+  ({ children, options, tippyOptions, ...rest }, ref) => {
     const { editor: currentEditor } = useCurrentEditor();
 
     const bubbleMenuProps: Omit<BubbleMenuProps, "children"> = useMemo(() => {
@@ -40,14 +62,11 @@ export const EditorBubble = forwardRef<HTMLDivElement, EditorBubbleProps>(
 
       return {
         shouldShow,
-        options: {
-          onHide: tippyOptions?.onHidden,
-          placement: tippyOptions?.placement,
-        },
+        options: resolveBubbleMenuOptions(options, tippyOptions),
         editor: currentEditor ?? undefined,
         ...rest,
       };
-    }, [rest, tippyOptions]);
+    }, [options, rest, tippyOptions]);
 
     if (!currentEditor) return null;
 
